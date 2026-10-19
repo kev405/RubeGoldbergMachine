@@ -1,0 +1,130 @@
+{
+  "atlasSize": 2048,
+  "dimensions": [
+    0.25,
+    1.29,
+    0.9
+  ],
+  "back": [
+    0.02001953125,
+    0.3759765625,
+    0.44140625,
+    0.97998046875
+  ],
+  "spine": [
+    0.44140625,
+    0.3759765625,
+    0.55859375,
+    0.97998046875
+  ],
+  "front": [
+    0.55859375,
+    0.3759765625,
+    0.97998046875,
+    0.97998046875
+  ],
+  "fore": [
+    0.02001953125,
+    0.23486328125,
+    0.6240234375,
+    0.35205078125
+  ],
+  "top": [
+    0.02001953125,
+    0.09375,
+    0.44140625,
+    0.2109375
+  ],
+  "bottom": [
+    0.46533203125,
+    0.09375,
+    0.88671875,
+    0.2109375
+  ],
+  "books": [
+    {
+      "name": "Book_01",
+      "title": "ATLAS CELESTE",
+      "author": "FLAMSTEED",
+      "style": "leather",
+      "edges": "sprinkled"
+    },
+    {
+      "name": "Book_02",
+      "title": "FAUSTO",
+      "author": "GOETHE",
+      "style": "cloth",
+      "edges": "natural"
+    },
+    {
+      "name": "Book_03",
+      "title": "ÓPTICA",
+      "author": "NEWTON",
+      "style": "half",
+      "edges": "tinted"
+    },
+    {
+      "name": "Book_04",
+      "title": "DON QUIJOTE",
+      "author": "CERVANTES",
+      "style": "leather",
+      "edges": "gilt"
+    },
+    {
+      "name": "Book_05",
+      "title": "LA VORÁGINE",
+      "author": "J. E. RIVERA",
+      "style": "cloth",
+      "edges": "tinted"
+    },
+    {
+      "name": "Book_06",
+      "title": "HISTORIA NATURAL",
+      "author": "PLINIO",
+      "style": "half",
+      "edges": "sprinkled"
+    },
+    {
+      "name": "Book_07",
+      "title": "LA ODISEA",
+      "author": "HOMERO",
+      "style": "leather",
+      "edges": "natural"
+    },
+    {
+      "name": "Book_08",
+      "title": "LA REPÚBLICA",
+      "author": "PLATÓN",
+      "style": "cloth",
+      "edges": "natural"
+    },
+    {
+      "name": "Book_09",
+      "title": "LA ILÍADA",
+      "author": "HOMERO",
+      "style": "half",
+      "edges": "gilt"
+    },
+    {
+      "name": "Book_10",
+      "title": "EL PRÍNCIPE",
+      "author": "MAQUIAVELO",
+      "style": "leather",
+      "edges": "tinted"
+    },
+    {
+      "name": "Book_11",
+      "title": "DIÁLOGOS",
+      "author": "GALILEO",
+      "style": "cloth",
+      "edges": "sprinkled"
+    },
+    {
+      "name": "Book_12",
+      "title": "PRINCIPIA",
+      "author": "NEWTON",
+      "style": "half",
+      "edges": "gilt"
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+using UnityEngine;
+
+public class TowerBuilder : MonoBehaviour
+{
+    public enum TowerStyle
+    {
+        Jenga,     // capas cruzadas de 3 bloques: muy estable
+        Inclinada  // columna angosta inclinada hacia -X: se cae con poco
+    }
+
+    [Header("Estilo")]
+    [SerializeField] private TowerStyle style = TowerStyle.Inclinada;
+    [SerializeField, Min(1)] private int layers = 6;
+
+    [Header("Medidas de cada bloque (metros)")]
+    [SerializeField] private float blockLength = 1.5f;
+    [SerializeField] private float blockHeight = 0.3f;
+    [SerializeField] private float blockWidth = 0.5f;
+    [Tooltip("Espacio entre bloques vecinos. Evita que se empujen al dar Play.")]
+    [SerializeField, Min(0f)] private float gap = 0.005f;
+
+    [Header("Solo estilo Jenga")]
+    [SerializeField, Min(1)] private int blocksPerLayer = 3;
+
+    [Header("Solo estilo Inclinada")]
+    [Tooltip("Bloques lado a lado en X por capa. 1 = columna angosta (la más inestable).")]
+    [SerializeField, Min(1)] private int blocksPerRow = 1;
+    [Tooltip("Cuánto se corre cada capa hacia -X local respecto a la de abajo.")]
+    [SerializeField, Min(0f)] private float leanPerLayer = 0.05f;
+
+    [Header("Física y aspecto")]
+    [SerializeField, Min(0.01f)] private float blockMass = 0.08f;
+    [SerializeField] private Material blockMaterial;
+    [SerializeField] private PhysicsMaterial blockPhysicsMaterial;
+    [Tooltip("Los bloques empiezan dormidos: la torre no se mueve hasta que algo la golpea.")]
+    [SerializeField] private bool startAsleep = true;
+
+    private void Start()
+    {
+        if (!startAsleep) return;
+        foreach (Rigidbody rb in GetComponentsInChildren<Rigidbody>())
+            rb.Sleep();
+    }
+
+    // El Empty que lleva este script debe estar en el piso o la superficie donde se apoya la torre.
+    [ContextMenu("Generar torre")]
+    private void Generate()
+    {
+        ClearChildren();
+
+        if (style == TowerStyle.Jenga) BuildJenga();
+        else BuildInclinada();
+
+        float totalHeight = layers * blockHeight + (layers - 1) * gap;
+        Debug.Log($"TowerBuilder ({style}): {transform.childCount} bloques, alto total {totalHeight:0.00} m.", this);
+
+#if UNITY_EDITOR
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gameObject.scene);
+#endif
+    }
+
+    // Capas pares: bloques a lo largo de X. Capas impares: a lo largo de Z.
+    private void BuildJenga()
+    {
+        float step = blockWidth + gap;
+        float firstOffset = -(blocksPerLayer - 1) * step * 0.5f;
+
+        for (int layer = 0; layer < layers; layer++)
+        {
+            bool alongX = layer % 2 == 0;
+            float y = LayerY(layer);
+
+            for (int i = 0; i < blocksPerLayer; i++)
+            {
+                float offset = firstOffset + i * step;
+                if (alongX)
+                    CreateBlock($"Bloque_{layer}_{i}", new Vector3(0f, y, offset), new Vector3(blockLength, blockHeight, blockWidth));
+                else
+                    CreateBlock($"Bloque_{layer}_{i}", new Vector3(offset, y, 0f), new Vector3(blockWidth, blockHeight, blockLength));
+            }
+        }
+    }
+
+    // Todos los bloques con el lado largo en Z: la torre es ancha de lado (no se cae hacia la cámara)
+    // pero angosta en X, y cada capa se corre un poco hacia -X. Así cae hacia el botón.
+    private void BuildInclinada()
+    {
+        float step = blockWidth + gap;
+        float rowWidth = blocksPerRow * blockWidth + (blocksPerRow - 1) * gap;
+        float firstOffset = -(blocksPerRow - 1) * step * 0.5f;
+
+        for (int layer = 0; layer < layers; layer++)
+        {
+            float y = LayerY(layer);
+            float shift = -leanPerLayer * layer;
+
+            for (int i = 0; i < blocksPerRow; i++)
+            {
+                float x = shift + firstOffset + i * step;
+                CreateBlock($"Bloque_{layer}_{i}", new Vector3(x, y, 0f), new Vector3(blockWidth, blockHeight, blockLength));
+            }
+        }
+
+        // Una pila de capas iguales corridas d se mantiene en pie mientras d < ancho / capas.
+        float critical = rowWidth / layers;
+        if (leanPerLayer >= critical)
+            Debug.LogWarning($"TowerBuilder: Lean Per Layer {leanPerLayer:0.000} se cae sola. Usa menos de {critical:0.000}.", this);
+        else
+            Debug.Log($"TowerBuilder: inclinación al {leanPerLayer / critical:P0} del límite ({critical:0.000} m por capa).", this);
+    }
+
+    private float LayerY(int layer) => blockHeight * 0.5f + layer * (blockHeight + gap);
+
+    private void CreateBlock(string blockName, Vector3 localPosition, Vector3 localScale)
+    {
+        GameObject block = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        block.name = blockName;
+        block.transform.SetParent(transform, false);
+        block.transform.localPosition = localPosition;
+        block.transform.localScale = localScale;
+
+        if (blockMaterial != null)
+            block.GetComponent<MeshRenderer>().sharedMaterial = blockMaterial;
+        if (blockPhysicsMaterial != null)
+            block.GetComponent<BoxCollider>().sharedMaterial = blockPhysicsMaterial;
+
+        Rigidbody rb = block.AddComponent<Rigidbody>();
+        rb.mass = blockMass;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+    }
+
+    [ContextMenu("Borrar torre")]
+    private void ClearChildren()
+    {
+        for (int i = transform.childCount - 1; i >= 0; i--)
+            DestroyImmediate(transform.GetChild(i).gameObject);
+    }
+}

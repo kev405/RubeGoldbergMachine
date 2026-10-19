@@ -1,0 +1,86 @@
+using UnityEngine;
+
+public class DominoArc : MonoBehaviour
+{
+    [Header("Prefab y forma del arco")]
+    [SerializeField] private GameObject dominoPrefab;
+    [SerializeField] private int count = 24;
+    [SerializeField] private float radius = 3f;
+    [SerializeField] private float arcDegrees = 180f;
+
+    [Header("Crecimiento (1 = tamaño del prefab)")]
+    [SerializeField] private float startScale = 0.35f;
+    [SerializeField] private float endScale = 1f;
+
+    [Header("Último dominó")]
+    [Tooltip("Alto en metros del último dominó. 0 = usar el alto normal del crecimiento.")]
+    [SerializeField, Min(0f)] private float lastDominoHeight = 0.75f;
+
+    // Arco: el primero queda en (0, 0, radius) mirando a +X y el último en (0, 0, -radius) mirando a -X.
+    [ContextMenu("Generar dominós")]
+    private void Generate()
+    {
+        if (dominoPrefab == null)
+        {
+            Debug.LogError("DominoArc: asigna el Domino Prefab antes de generar.", this);
+            return;
+        }
+
+        ClearChildren();
+
+        Vector3 baseScale = dominoPrefab.transform.localScale;
+        float baseVolume = baseScale.x * baseScale.y * baseScale.z;
+        float arcLength = radius * arcDegrees * Mathf.Deg2Rad;
+
+        // 1) Alturas del crecimiento. La separación se calcula con estas alturas,
+        //    así cambiar el último dominó no mueve a ninguno de los demás.
+        float[] heights = new float[count];
+        float weight = 0f;
+        for (int i = 0; i < count; i++)
+        {
+            float t = count == 1 ? 0f : (float)i / (count - 1);
+            heights[i] = baseScale.y * Mathf.Lerp(startScale, endScale, t);
+            if (i < count - 1) weight += heights[i];
+        }
+        float factor = weight > 0f ? arcLength / weight : 0f; // separación = factor × altura
+
+        // 2) Colocar cada dominó.
+        float dist = 0f;
+        for (int i = 0; i < count; i++)
+        {
+            float s = heights[i] / baseScale.y;
+            Vector3 scale = baseScale * s;
+
+            bool isLast = i == count - 1;
+            if (isLast && lastDominoHeight > 0f)
+                scale.y = lastDominoHeight; // solo cambia el alto; ancho y grosor siguen el crecimiento
+
+            float phi = dist / radius;
+            GameObject d = Instantiate(dominoPrefab, transform);
+            d.name = $"Domino_{i:00}";
+            d.transform.localPosition = new Vector3(radius * Mathf.Sin(phi), scale.y * 0.5f, radius * Mathf.Cos(phi));
+            d.transform.localRotation = Quaternion.LookRotation(new Vector3(Mathf.Cos(phi), 0f, -Mathf.Sin(phi)));
+            d.transform.localScale = scale;
+
+            // Masa proporcional al volumen (los pequeños pesan menos).
+            if (d.TryGetComponent(out Rigidbody rb))
+                rb.mass = Mathf.Max(0.03f, (scale.x * scale.y * scale.z) / baseVolume);
+
+            dist += factor * heights[i];
+        }
+
+        Debug.Log($"DominoArc: {count} dominós. Separación = {factor:0.00} × altura (ideal 0.55–0.65). " +
+                  $"Último dominó: alto {(lastDominoHeight > 0f ? lastDominoHeight : heights[count - 1]):0.00} m.", this);
+
+#if UNITY_EDITOR
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gameObject.scene);
+#endif
+    }
+
+    [ContextMenu("Borrar dominós")]
+    private void ClearChildren()
+    {
+        for (int i = transform.childCount - 1; i >= 0; i--)
+            DestroyImmediate(transform.GetChild(i).gameObject);
+    }
+}

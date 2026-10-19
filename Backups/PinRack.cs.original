@@ -1,0 +1,117 @@
+using UnityEngine;
+
+public class PinRack : MonoBehaviour
+{
+    [Header("Triángulo")]
+    [Tooltip("4 filas = 10 pinos (1 + 2 + 3 + 4).")]
+    [SerializeField, Min(1)] private int rows = 4;
+    [Tooltip("Distancia entre filas, hacia -X local.")]
+    [SerializeField] private float rowSpacing = 0.35f;
+    [Tooltip("Distancia entre pinos de una misma fila, en Z.")]
+    [SerializeField] private float pinSpacing = 0.4f;
+
+    [Header("Pino")]
+    [Tooltip("Opcional: modelo de pino (por ejemplo el de Blender) con su pivote en el centro. Vacío = cápsula.")]
+    [SerializeField] private GameObject pinPrefab;
+    [SerializeField] private float pinDiameter = 0.25f;
+    [SerializeField] private float pinHeight = 0.8f;
+    [SerializeField, Min(0.01f)] private float pinMass = 0.4f;
+
+    [Header("Aspecto")]
+    [SerializeField] private Material pinMaterial;
+    [Tooltip("Franja decorativa (sin collider). Vacío = sin franja.")]
+    [SerializeField] private Material stripeMaterial;
+    [SerializeField] private PhysicsMaterial pinPhysicsMaterial;
+    [Tooltip("Los pinos empiezan dormidos: no tiemblan hasta que algo los golpea.")]
+    [SerializeField] private bool startAsleep = true;
+
+    private void Start()
+    {
+        if (!startAsleep) return;
+        foreach (Rigidbody rb in GetComponentsInChildren<Rigidbody>())
+            rb.Sleep();
+    }
+
+    // El pino 1 (la punta) queda en la posición del Empty; las filas siguientes van hacia -X local.
+    // El Empty debe estar en el suelo de la pista.
+    [ContextMenu("Generar pinos")]
+    private void Generate()
+    {
+        ClearChildren();
+
+        if (pinSpacing <= pinDiameter)
+            Debug.LogWarning("PinRack: Pin Spacing es menor que el diámetro; los pinos se atraviesan.", this);
+
+        int number = 1;
+        for (int row = 0; row < rows; row++)
+        {
+            float x = -rowSpacing * row;
+            float firstZ = -row * pinSpacing * 0.5f;
+
+            for (int i = 0; i <= row; i++)
+            {
+                Vector3 position = new Vector3(x, pinHeight * 0.5f, firstZ + i * pinSpacing);
+                CreatePin($"Pino_{number:00}", position);
+                number++;
+            }
+        }
+
+        Debug.Log($"PinRack: {number - 1} pinos en {rows} filas. Fondo del triángulo en X local {-rowSpacing * (rows - 1):0.00}.", this);
+
+#if UNITY_EDITOR
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gameObject.scene);
+#endif
+    }
+
+    private void CreatePin(string pinName, Vector3 localPosition)
+    {
+        GameObject pin;
+        if (pinPrefab != null)
+        {
+            pin = Instantiate(pinPrefab, transform);
+        }
+        else
+        {
+            // Una cápsula de Unity mide 1 de diámetro y 2 de alto con Scale (1, 1, 1).
+            pin = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            pin.transform.SetParent(transform, false);
+            pin.transform.localScale = new Vector3(pinDiameter, pinHeight * 0.5f, pinDiameter);
+
+            if (pinMaterial != null)
+                pin.GetComponent<MeshRenderer>().sharedMaterial = pinMaterial;
+            if (pinPhysicsMaterial != null)
+                pin.GetComponent<Collider>().sharedMaterial = pinPhysicsMaterial;
+            if (stripeMaterial != null)
+                AddStripe(pin.transform);
+        }
+
+        pin.name = pinName;
+        pin.transform.localPosition = localPosition;
+        pin.transform.localRotation = Quaternion.identity;
+
+        if (!pin.TryGetComponent(out Rigidbody rb))
+            rb = pin.AddComponent<Rigidbody>();
+        rb.mass = pinMass;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+    }
+
+    // Franja roja en la parte alta del pino, solo decorativa.
+    private void AddStripe(Transform pin)
+    {
+        GameObject stripe = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        stripe.name = "Franja";
+        DestroyImmediate(stripe.GetComponent<Collider>());
+        stripe.transform.SetParent(pin, false);
+        stripe.transform.localPosition = new Vector3(0f, 0.45f, 0f);
+        stripe.transform.localScale = new Vector3(1.02f, 0.05f, 1.02f);
+        stripe.GetComponent<MeshRenderer>().sharedMaterial = stripeMaterial;
+    }
+
+    [ContextMenu("Borrar pinos")]
+    private void ClearChildren()
+    {
+        for (int i = transform.childCount - 1; i >= 0; i--)
+            DestroyImmediate(transform.GetChild(i).gameObject);
+    }
+}
